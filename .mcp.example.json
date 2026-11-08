@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "jarvis": {
+      "command": ".venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "jarvis.mcp_server"
+      ]
+    },
+    "google": {
+      "command": ".venv/Scripts/workspace-mcp.exe",
+      "args": [
+        "--single-user",
+        "--tools",
+        "gmail",
+        "calendar",
+        "tasks",
+        "--tool-tier",
+        "complete",
+        "--disabled-tools",
+        "send_gmail_message",
+        "manage_gmail_filter",
+        "manage_task_list",
+        "manage_out_of_office",
+        "manage_focus_time",
+        "create_calendar",
+        "start_google_auth"
+      ],
+      "env": {
+        "USER_GOOGLE_EMAIL": "${JARVIS_USER_EMAIL}",
+        "GOOGLE_CLIENT_SECRET_PATH": "${USERPROFILE}/.jarvis/client_secret.json",
+        "WORKSPACE_MCP_CREDENTIALS_DIR": "${USERPROFILE}/.jarvis/google",
+        "WORKSPACE_ATTACHMENT_DIR": "${USERPROFILE}/.jarvis/mail_attachments",
+        "WORKSPACE_MCP_HOST": "127.0.0.1"
+      }
+    }
+  }
+}

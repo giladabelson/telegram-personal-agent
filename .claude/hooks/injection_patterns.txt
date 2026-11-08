@@ -1,0 +1,112 @@
+# Prompt-injection patterns for injection_scan.py (Jarvis's own list, not copied from anywhere).
+# Format:  category  weight  id  flags  [triggers]  ::  regex
+#   category: override | authority | exfil | credential | tool   (hidden-text signals are computed in code)
+#   weight:   points added once per id; the hook warns when the total reaches THRESHOLD (4) in injection_scan.py
+#   flags:    "-" or "neg" (= ignore the hit when "never/don't/do not/אל/אין/לעולם" comes right before it)
+#   triggers: comma-separated lowercase substrings; the regex only runs near one of them (speed). "*" = always.
+#             Every match of the regex MUST contain at least one trigger, or the pattern can silently miss.
+# Regexes run case-insensitive + multiline on NORMALISED text: lowercased, zero-width/bidi chars and niqqud removed,
+# Cyrillic/Greek look-alikes mapped to Latin, full-width letters folded, HTML entities decoded.
+# A second pass joins s p a c e d letters, undoes l33t digits and %-encoding; base64 / hidden-tag / reversed text
+# is decoded and scanned too. Single weak words get 1 point so ordinary mail ("שלח לי", "המנהל") stays quiet.
+# Edit tip: some shells collapse a double backslash; prefer \x5c for a literal backslash.
+
+# ---------- instruction override ----------
+override 4 ov.ignore_en - [ignor,disregard,forget,overrid,bypass] :: \b(?:ignore|disregard|forget|override|bypass)\s+(?:(?:all|any|the|your|these|those|of|my|every|previous|prior|above|earlier|preceding|former|original|system|existing|safety|old)\s+){0,4}(?:instructions?|rules|prompts?|directives?|guidelines|guidance|guardrails|constraints|programming|orders)\b
+override 4 ov.new_instr_en - [instruction,directive,rules,prompt,task] :: \b(?:new|updated|real|actual|revised)\s+(?:instructions?|directives?|rules|system\s+prompt|task)\s*:
+override 3 ov.from_now_en - [now on,henceforth,starting now] :: \b(?:from\s+now\s+on|henceforth|starting\s+now)\s*,?\s+(?:you|jarvis|assistant)\s+(?:are|will|must|shall|should|have\s+to)\b
+override 3 ov.you_are_now_en - [you are now] :: \byou\s+are\s+now\s+(?:an?\s+|in\s+|my\s+)?(?:[a-z]+\s+){0,2}(?:assistant|ai|agent|bot|model|dan|mode)\b
+override 2 ov.no_longer_en - [no longer] :: \byou\s+are\s+no\s+longer\s+(?:an?\s+|bound|restricted|jarvis|claude|limited)
+override 3 ov.jailbreak - [jailbr,mode,anything now] :: \b(?:jailbreak|jailbroken|developer\s+mode|dan\s+mode|do\s+anything\s+now|god\s+mode|unrestricted\s+mode)\b
+override 4 ov.dont_tell_en - [the user,your user,your owner,your boss,your human] :: \b(?:do\s+not|don'?t|never)\s+(?:tell|inform|notify|alert|warn|ask|mention\s+(?:this|it)\s+to)\s+(?:the\s+user|your\s+(?:user|owner|boss|human))\b
+override 4 ov.without_telling_en - [without] :: \bwithout\s+(?:telling|informing|asking|notifying|alerting|warning|confirming\s+with)\s+(?:the\s+user|your\s+(?:user|owner|human))\b
+override 2 ov.pretend_en - [pretend,act as,roleplay] :: \b(?:pretend\s+(?:to\s+be|you\s+are|that\s+you)|act\s+as\s+(?:an?\s+)?(?:unrestricted|different|new|evil|admin|system|developer|root|jailbroken)|roleplay\s+as)\b
+override 4 ov.reveal_en - [prompt,instructions,rules,claude.md,memory] :: \b(?:reveal|print|show|output|repeat|dump|leak)\s+(?:me\s+)?(?:your|the)\s+(?:system\s+prompt|instructions|rules|claude\.md|memory|hidden\s+prompt|initial\s+prompt)\b
+override 4 ov.forget_told_en - [what,whatever,that you] :: \b(?:ignore|disregard|forget)\s+(?:everything\s+|all\s+)?(?:what|whatever|that)\s+(?:you\s+(?:were|have\s+been|got)\s+(?:told|given|instructed|asked)|was\s+(?:said|written)\s+(?:before|above|earlier))
+override 3 ov.real_job_en - [job,task,purpose,goal,mission] :: \byour\s+(?:real|actual|true|new|only|primary)\s+(?:job|task|purpose|goal|mission)\s+(?:is|now\s+is)\b
+override 4 ov.when_you_read_en - [this] :: \bwhen\s+(?:you|the\s+(?:ai|assistant|model|agent))\s+(?:summari[sz]e|read|process|parse|see)s?\s+(?:this|these)\b
+override 3 ov.allowed_now_en - [allowed,permitted,authori,free to] :: \byou\s+are\s+(?:now\s+)?(?:allowed|permitted|authori[sz]ed|free|cleared)\s+to\b
+override 2 ov.silently_en - [silent,secret,quietly] :: \b(?:silently|quietly|secretly|in\s+secret)\b|\bdo\s+(?:this|it|the\s+following)\s+(?:silently|quietly|secretly)\b
+override 3 ov.dont_mention_he - [זכיר,ציין,דווח,ספר] :: (?<!\w)(?:ו?אל|בלי|מבלי)\s+(?:ת|ל)?(?:הזכיר|זכיר|תזכיר|לציין|תציין|לדווח|תדווח|לספר|תספר)\s+(?:על\s+)?(?:את\s+)?(?:ה)?(?:מייל|הודעה|זה|הבקשה|ההוראה)
+override 2 ov.tell_him_scripted_he - [משתמש,בעלים] :: (?<!\w)(?:תגיד|תאמר|תכתוב|תענה|ספר|תספר)\s+ל(?:משתמש|בעלים)\s+ש
+override 3 ov.dont_mention_en - [mention,bring up,report] :: \b(?:do\s+not|don'?t|never)\s+(?:mention|bring\s+up|report|flag)\s+(?:this|the|that)\s+(?:email|message|instruction|request|note)\b
+override 2 ov.system_prompt - [system prompt] :: \bsystem\s+prompt\b
+override 3 ov.decode_follow - [decode,base64,rot13,reverse] :: \b(?:decode|base64|rot13|reverse)\b[^\n]{0,40}\b(?:follow|execute|run|obey|do\s+what)\b
+override 4 ov.ignore_he - [תעלם,תעלמ] :: (?<!\w)(?:ו|ש)?(?:ה|ת|לה)?תעל[םמ]\w*\s+(?:\w{0,2}כל\s+)?\w{0,3}(?:הוראות|הנחיות|כללים|חוקים|הוראה|בקשות|ההודעות\s+הקודמות|מה\s+ש(?:נאמר|כתוב|קיבלת))
+override 4 ov.forget_he - [שכח,שכוח] :: (?<!\w)ו?(?:שכח|תשכח|שכחי|לשכוח)\s+(?:את\s+)?(?:כל\s+)?(?:מה\s+ש(?:נאמר|אמרו|כתוב|קיבלת|למדת)|\w{0,2}(?:הוראות|הנחיות))
+override 3 ov.forget_rules_he - [שכח,שכוח] :: (?<!\w)ו?(?:שכח|תשכח|שכחי|לשכוח)\s+(?:את\s+)?(?:כל\s+)?\w{0,2}(?:כללים|חוקים)
+override 4 ov.from_now_he - [מעכשיו,מעתה,מהיום,מרגע] :: (?<!\w)מ(?:עכשיו|עתה|היום|רגע\s+זה)\s+(?:ו?אילך\s+)?(?:אתה|את)\s+(?:עוזר|סוכן|בוט|מודל|במצב|מקבל|תציית|תפעל|חופשי|לא\s+מוגבל|ג'רוויס|ממלא)
+override 2 ov.from_now_he_weak - [מעכשיו,מעתה] :: (?<!\w)מ(?:עכשיו|עתה)\s+(?:ו?אילך\s+)?(?:אתה|תפעל|תציית|תענה)
+override 3 ov.you_now_he - [אתה] :: (?<!\w)אתה\s+(?:עכשיו|כעת|מעכשיו)\s+(?:עוזר|סוכן|בוט|מודל|במצב|חופשי|לא\s+מוגבל)
+override 4 ov.new_instr_he - [חדשות,חדשה,מעודכנות,אמיתיות] :: (?<!\w)(?:הוראות|הנחיות|משימה)\s+(?:חדשות|חדשה|מעודכנות|אמיתיות)\s*:
+override 2 ov.new_instr_he_weak - [חדשות,מעודכנות] :: (?<!\w)(?:הוראות|הנחיות)\s+(?:חדשות|מעודכנות)(?!\w)
+override 4 ov.dont_tell_he - [המשתמש,הבעלים] :: (?<!\w)(?:אל|בלי|מבלי|לא)\s+(?:ל|ת)?(?:ספר|תספר|לספר|ליידע|לידע|תיידע|תגיד|להגיד|לשאול|תשאל|לעדכן|תעדכן|להודיע|תודיע)\w*\s+(?:את\s+|ל|על\s+זה\s+ל)?(?:המשתמש|הבעלים)
+override 4 ov.bypass_he - [עקוף] :: (?<!\w)(?:עקוף|לעקוף|תעקוף)\s+(?:את\s+)?(?:כל\s+)?\w{0,2}(?:הגבלות|מגבלות|כללים|אבטחה|הגנות|הרשאות|הוראות)
+override 3 ov.cancel_rules_he - [בטל] :: (?<!\w)(?:בטל|לבטל|תבטל)\s+(?:את\s+)?(?:כל\s+)?\w{0,2}(?:הוראות|כללים|הנחיות|הגבלות)
+
+# ---------- role / authority claims ----------
+authority 3 auth.role_tag - [system,assistant,developer,admin,root,override,מערכת] :: (?:^|<!--|>)\s*(?:\[|<|\x23{1,6}\s*|\*\*)?\s*(?:ai\s+)?(?:system|assistant|developer|admin(?:istrator)?|root|override|מערכת)(?:\s+(?:message|note|override|prompt|instructions?|notice|הודעה))?\s*(?:\]|>|\*\*)?\s*:
+authority 4 auth.chat_tokens - [<|,|>,inst],<<] :: <\|?\s*(?:im_start|im_end|system|endoftext|begin_of_text|start_header_id)\s*\|?>|\[/?inst\]|<</?sys>>
+authority 3 auth.xml_tag - [system,instruction,admin,important] :: \[\s*(?:system|instructions?|admin|important|override)\s*\]|</?(?:system|system[-_]?(?:prompt|message|instructions?)|instructions?|admin|important[-_]?instructions?|user[-_]?instructions?)\s*>
+authority 1 auth.anthropic - [anthropic] :: \banthropic\b
+authority 3 auth.from_vendor - [anthropic,openai,claude,the system,developer,admin] :: \b(?:message|notice|instruction|update|alert|directive)s?\s+from\s+(?:anthropic|openai|claude|the\s+(?:system|developers?|administrator|admin))\b
+authority 3 auth.vendor_says - [anthropic,claude,openai] :: \b(?:anthropic|claude|openai)\s+(?:team|security|support|safety|staff)\s+(?:requires|instructs|says|asks|has\s+authori[sz]ed|wants)\b
+authority 4 auth.address_ai - [ ai,llm,language model,claude,gpt,chatbot] :: \b(?:dear|hey|hi|hello|attention|note\s+(?:to|for)|instructions?\s+(?:to|for)|message\s+(?:to|for)|important\s+for)\s*:?\s+(?:the\s+|any\s+|all\s+|an\s+)?(?:ai|llm|language\s+model|claude|gpt|chatbot)s?(?:\s+(?:assistant|agent|model|system)s?)?\s*[:,.!]
+authority 3 auth.address_assistant - [assistant,agent,bot] :: \b(?:note|instructions?|message)\s+(?:to|for)\s+(?:the\s+|any\s+)?(?:assistant|agent|bot)s?\s*[:,.]
+authority 4 auth.if_you_are_ai - [if you are] :: \bif\s+you\s+are\s+(?:an?\s+)?(?:ai|llm|language\s+model|assistant|agent|bot|claude|gpt|automated\s+system)\b
+authority 4 auth.ai_reading - [this] :: \b(?:ai|llm)\s+(?:assistant|agent|model)?s?\s*(?:reading|processing|summari[sz]ing|parsing)\s+this\b
+authority 3 auth.vocative_en - [assistant,agent,bot,claude,jarvis] :: (?:^|[>.!?;]\s*)(?:hey\s+|hi\s+|ok\s+|okay\s+|dear\s+)?(?:ai\s+)?(?:assistant|agent|bot|claude|jarvis)\s*,
+authority 3 auth.i_authorize_en - [authori,permit,allow,instruct,order,command] :: \bi\s+(?:hereby\s+|also\s+)?(?:authori[sz]e|permit|allow|instruct|order|command)\s+you\s+to\b
+authority 2 auth.as_owner_en - [owner,admin,developer,creator] :: \bas\s+(?:the\s+|your\s+)?(?:account\s+)?(?:owner|admin|administrator|developer|creator)\b
+authority 4 auth.for_ai_en - [ ai ,ais ,llm,assistant,agent,automated,bot] :: \b(?:for|to)\s+(?:any|all|the|every)\s+(?:ai|llm|assistant|agent|automated\s+(?:assistant|agent|system|reader)|bot)s?\s+(?:reading|processing|that\s+reads|reviewing|summari[sz]ing)\b|\b(?:message|email|note|text)\s+is\s+(?:only\s+)?for\s+(?:the\s+)?(?:automated|ai|virtual|digital)\s+(?:assistant|agent|system|reader)
+authority 3 auth.vocative_he - [בוט,סוכן,עוזר,רוויס] :: (?<!\w)(?:שים\s+לב\s+|היי\s+|הי\s+)?(?:בוט|סוכן|עוזר|ג'?רוויס)(?:\s+(?:יקר|יקרה|חכם|דיגיטלי|אישי))?\s*[:,]
+authority 2 auth.jarvis - [jarvis,רוויס] :: \bjarvis\b|ג'?רוויס
+authority 4 auth.user_approved_en - [the user,your user,your owner,your boss,your human] :: \b(?:the\s+user|your\s+(?:user|owner|boss|human))\s+(?:has\s+)?(?:already\s+)?(?:approved|authori[sz]ed|confirmed|allowed|consented\s+to|wants\s+you\s+to|asked\s+you\s+to|instructed\s+you)\b
+authority 1 auth.preapproved - [pre] :: \bpre-?(?:approved|authori[sz]ed)\b
+authority 1 auth.manager_he - [מנהל] :: (?<!\w)[והלמב]?(?:המנהל|המנהלת)(?!\w)
+authority 2 auth.sysadmin_he - [מנהל] :: (?<!\w)[והלמב]?(?:מנהל|מנהלת)\s+(?:ה)?(?:מערכת|רשת)(?!\w)
+authority 3 auth.sysmsg_he - [מערכת] :: (?<!\w)(?:הודעת|הוראת|התראת|עדכון)\s+(?:ה)?מערכת(?!\w)
+authority 4 auth.user_approved_he - [המשתמש,הבעלים] :: (?<!\w)(?:המשתמש|הבעלים)\s+(?:כבר\s+)?(?:אישר|אישרה|מאשר|הרשה|התיר|ביקש\s+(?:ממך|שתשלח|שתעביר|שתמחק|שתוסיף))
+authority 4 auth.with_approval_he - [המשתמש] :: (?<!\w)(?:באישור|בהרשאת|בהוראת)\s+(?:של\s+)?(?:המשתמש)
+authority 4 auth.address_ai_he - [עוזר,סוכן,בוט,בינה,מודל] :: (?<!\w)(?:הודעה|הוראה|הוראות|הערה)\s+(?:ל|אל\s+)(?:ה)?(?:עוזר|סוכן|בוט|בינה\s+(?:ה)?מלאכותית|מודל)
+authority 4 auth.if_you_are_ai_he - [אם אתה] :: (?<!\w)אם\s+אתה\s+(?:ה)?(?:עוזר|סוכן|בוט|בינה\s+מלאכותית|מודל|ג'?רוויס)
+authority 3 auth.dear_ai_he - [עוזר,סוכן] :: (?<!\w)(?:ל|אל\s+)?(?:ה)?(?:עוזר|עוזרת|סוכן)\s+(?:ה)?(?:דיגיטלי|וירטואלי|אישי|חכם|של\s+המשתמש)\w*\s*[:,]
+
+# ---------- exfiltration / send requests ----------
+exfil 3 ex.bulk_en neg [all ,every,each,the last,the latest,the recent,the full,the entire,his ,your ,the user] :: \b(?:send|forward|email|e-mail|mail|upload|post|share|leak|copy|transfer|exfiltrate|bcc|cc)\s+(?:me\s+|us\s+)?(?:all|every|each|the\s+(?:last|latest|recent|full|entire)|his|your|the\s+user'?s)\s+(?:[a-z0-9']+\s+){0,3}(?:emails?|e-mails?|messages?|inbox|mails?|files?|documents?|contacts?|data|memory|notes|conversations?|chats?|history|calendar|passwords?|credentials|tokens?|keys?|secrets?|codes?)\b
+exfil 2 ex.send_to_addr - [@] :: \b(?:send|forward|email|mail|bcc|cc|reply|post|upload)\b[^.\n]{0,60}\bto\s+[\w.+-]{1,64}@[\w-]{1,63}\.[\w.]{1,63}
+exfil 3 ex.contents_of - [content] :: \bcontents?\s+of\s+(?:your|the\s+user'?s|the|his)\s+(?:memory|inbox|mailbox|files?|claude\.md|config(?:uration)?|settings|instructions|system\s+prompt|notes|contacts)\b
+exfil 2 ex.share_with - [ with] :: \bshare\s+(?:the\s+|his\s+|your\s+|my\s+|the\s+user'?s\s+)?(?:calendar|inbox|contacts|files|drive|folder|documents|location|mailbox)\s+with\b
+exfil 2 ex.schedule_msg - [schedule,create,write,prepare,make] :: \b(?:schedule|create|write|prepare|make)\s+(?:a|an)\s+(?:whatsapp|email|e-mail|message|sms|text|draft|reply)\s+(?:message\s+)?to\b
+exfil 2 ex.url_open_param - [http] :: https?://[^\s)"'>]{0,1000}?[?&][\w-]{1,40}=(?=\s|$|[)"'>])
+exfil 2 ex.schedule_msg_he - [תזמן,קבע,תקבע] :: (?<!\w)ו?(?:תזמן|לתזמן|תתזמן|קבע|תקבע)\s+(?:את\s+)?(?:ה)?(?:הודע\w*|מייל|וואטסאפ|ווטסאפ|סמס)
+exfil 2 ex.forward_this - [forward] :: \bforward\s+(?:this|it|that|the\s+(?:email|message|thread|mail))\s+(?:email\s+|message\s+)?to\b
+exfil 2 ex.autoforward - [forward,filter,mailbox rule] :: \b(?:auto-?forward(?:ing)?|forwarding\s+rule|mail\s+filter|mailbox\s+rule)\b
+exfil 4 ex.bulk_he - [כל ה] :: (?<!\w)ו?(?:שלח|שלחי|תשלח|לשלוח|העבר|העבירי|תעביר|להעביר)\s+(?:מיד\s+)?(?:לי\s+|לנו\s+|אליי\s+)?(?:את\s+)?כל\s+ה(?:מיילים|הודעות|קבצים|מסמכים|אנשי\s+הקשר|נתונים|שיחות|סיסמאות|קודים|תוכן|זיכרון|פרטים|התכתבות)
+exfil 2 ex.forward_mail_he - [עביר,העבר] :: (?<!\w)ו?(?:העבר|העבירי|תעביר|להעביר)\w*\s+את\s+(?:ה)?(?:מייל|הודעה|שרשור|התכתבות|קובץ)
+exfil 2 ex.send_sensitive_he - [שלח,שלוח,העבר,עביר] :: (?<!\w)ו?(?:שלח|שלחי|תשלח|לשלוח|העבר|תעביר|להעביר)\s+(?:לי\s+|לנו\s+|אליי\s+)?(?:את\s+)?(?:ה)?(?:רשימת\s+)?(?:זיכרון|אנשי\s+(?:ה)?קשר|סיסמ\w*|קודים|היסטוריה|נתונים\s+האישיים|פרטים\s+האישיים)
+exfil 1 ex.send_to_he - [שלח,שלוח,העבר,עביר] :: (?<!\w)ו?(?:שלח|שלחי|שלחו|תשלח|לשלוח|העבר|תעביר|להעביר)\s+ל(?!י(?!\w)|נו(?!\w)|ך(?!\w))\w
+exfil 1 ex.to_addr_he - [כתובת] :: (?<!\w)(?:ל|אל\s+)?(?:ה)?כתובת\s*:?\s*[\w.+-]{1,64}@[\w-]{1,63}\.
+exfil 4 ex.url_template - [http] :: https?://[^\s)"'>]{0,1000}?[?&#][\w.-]{0,40}=\s*(?:\{|\[|<|%7b|%5b|%3c|\$)
+exfil 4 ex.put_in_url - [url,link,query,parameter] :: \b(?:append|add|include|put|insert|encode|embed)\s+(?:[\w']+\s+){0,6}(?:to|in|into|as)\s+(?:the\s+|this\s+|a\s+)?(?:url|link|query(?:\s+string)?|parameter|image\s+url)\b
+exfil 3 ex.put_in_url_he - [קישור,כתובת,url] :: (?<!\w)(?:הוסף|תוסיף|שים|תשים|הכנס|תכניס|צרף|תצרף)\s+(?:\S+\s+){0,5}(?:ל|ב)(?:קישור|כתובת\s+ה|url)
+exfil 3 ex.exfil_host - [webhook,requestbin,pipedream,ngrok,burpcollab,interact.sh,oast.,beeceptor,hookbin,requestcatcher] :: \b(?:webhook\.site|requestbin|pipedream\.net|ngrok(?:-free)?\.(?:io|app|dev)|burpcollaborator|interact\.sh|oast\.(?:fun|me|pro|site|live)|beeceptor|hookbin|requestcatcher)\b
+exfil 1 ex.md_image_query - [![] :: !\[[^\]]{0,80}\]\(https?://[^)\s?]{0,1000}\?[^)\s=]{0,1000}=
+
+# ---------- credential requests ----------
+credential 4 cr.request_en neg [login,2fa,password,passcode,pin,otp,one-time,one time,code,credentials,cvv,cvc,card,seed phrase,recovery,api key,token,id number] :: \b(?:send|give|provide|share|reply\s+with|respond\s+with|tell\s+(?:me|us)|forward|paste|read\s+(?:me|us)|email|text)\s+(?:me\s+|us\s+|back\s+)?(?:your|the\s+user'?s|the|his|their|all)\s+(?:[a-z-]+\s+){0,2}(?:password|passcode|pin(?:\s+code)?|otp|one[-\s]time\s+(?:code|password)|verification\s+code|security\s+code|2fa(?:\s+code)?|auth(?:entication)?\s+code|login\s+(?:details|credentials|info)|credentials|cvv|cvc|card\s+(?:number|details)|credit\s+card|seed\s+phrase|recovery\s+(?:phrase|codes?)|api\s+keys?|access\s+tokens?|id\s+number|sms\s+code)\b
+credential 4 cr.request_he neg [סיסמ,קוד,כרטיס,אשראי,זהות,ת"ז,תז,התחברות,כניסה,חשבון] :: (?<!\w)(?:לשלוח|למסור|לספק|שלח|שלחי|שלחו|תשלח|תשלחי|העבר|תעביר|מסור|תמסור|ספק|תספק|כתוב|תכתוב|תן|תני|השב|תשיב|הקרא|תקריא)\s+(?:לנו\s+|לי\s+|אלינו\s+|אליי\s+)?(?:את\s+)?(?:ה)?(?:סיסמ\w*|קוד\s+(?:ה)?(?:אימות|חד[-\s]?פעמי|סודי|גישה|sms)|(?:מספר|פרטי)\s+(?:ה)?(?:כרטיס|אשראי)\w*|(?:מספר\s+)?(?:תעודת\s+(?:ה)?זהות|ת"ז|תז)|פרטי\s+(?:ה)?(?:התחברות|כניסה|חשבון)|קוד(?:ים)?\s+שקיבלת)
+credential 3 cr.with_your neg [password,passcode,pin,otp,one-time,one time,code,cvv,card,id number] :: \bwith\s+(?:your|the\s+user'?s|his)\s+(?:[a-z-]+\s+){0,2}(?:password|passcode|pin|otp|one[-\s]time\s+code|verification\s+code|security\s+code|2fa\s+code|cvv|card\s+number|id\s+number)\b
+credential 3 cr.harvest_en - [code,password] :: \b(?:read|list|copy|extract|collect|find|forward|send|gather)\b[^.\n]{0,40}\b(?:one[-\s]time|verification|security|2fa|otp|login|sms)\s+(?:codes?|passwords?)\b
+credential 1 cr.mention - [password,passcode,otp,verification code,2fa,cvv,seed phrase,סיסמ,קוד,זהות] :: \b(?:password|passcode|otp|verification\s+code|2fa|cvv|seed\s+phrase)\b|סיסמ|קוד\s+(?:ה)?אימות|קוד\s+חד[-\s]?פעמי|תעודת\s+זהות
+credential 3 cr.files - [credentials.json,client_secret,daemon.key,.env,id_rsa,.ssh/,oauth_token,learned.json,.jarvis] :: (?:\.credentials\.json|client_secret|daemon\.key|(?<![\w.])\.env\b|id_rsa|\.ssh/|oauth_token|learned\.json|\.jarvis[/\x5c])
+
+# ---------- tool-name mentions (ordinary mail and web pages never name Jarvis's tools) ----------
+tool 4 tl.mcp - [mcp__] :: \bmcp__\w+
+tool 4 tl.jarvis_tools - [schedule_,cancel_sch,list_sch,manage_,_gmail_,tell_jarvis,_he,job_done,get_job,work_status,waiting_for,parse_when,download_att,get_page,form_input,javascript_tool,file_upload,edit_message] :: \b(?:schedule_email|schedule_whatsapp|cancel_scheduled|list_scheduled|manage_event|manage_task|draft_gmail_message|send_gmail_message|modify_gmail_message_labels|batch_modify_gmail_message_labels|tell_jarvis|transcribe_he|speak_he|job_done|get_job|work_status|waiting_for_reply|parse_when|download_attachment|get_page_text|form_input|javascript_tool|file_upload|edit_message)\b
+tool 3 tl.agents - [-reader,-worker,-labeler,-advisor,-escalation] :: \b(?:browser-worker|email-reader|web-reader|calendar-reader|email-labeler|opus-advisor|sonnet-escalation)\b
+tool 3 tl.config_files - [claude.md,settings,permissions_log,access.json,allowlist] :: \b(?:claude\.md|settings(?:\.local)?\.json|permissions_log(?:\.md)?|access\.json|allowlist)\b
+tool 2 tl.use_tool_en - [tool,function,subagent,mcp] :: \b(?:use|call|invoke|trigger|execute)\s+(?:the\s+|your\s+)?[\w-]+\s+(?:tool|function|subagent|mcp)\b
+tool 2 tl.use_tool_he - [כלי,פונקציה,סוכן] :: (?<!\w)(?:השתמש|תשתמש|הפעל|תפעיל|קרא\s+ל|תקרא\s+ל)\s+(?:ב|את\s+)?(?:ה)?(?:כלי|פונקציה|סוכן)(?!\w)
+tool 3 tl.memory_edit_en - [memory,instructions,rules,allow,permissions,system prompt] :: \b(?:update|edit|write\s+to|add\s+(?:[\w']+\s+){0,4}to|change|modify|overwrite)\s+(?:your\s+|the\s+)?(?:memory|instructions|rules|allow[-\s]?list|permissions|system\s+prompt)\b|\bmemory/\w+\.md\b
+tool 3 tl.memory_edit_he - [זיכרון,הרשאות,מותר,הגדרות,כללים,הוראות] :: (?<!\w)(?:עדכן|תעדכן|שנה|תשנה|הוסף|תוסיף|כתוב|תכתוב)\s+(?:את\s+)?(?:זה\s+)?(?:ל|ב)?(?:ה)?(?:זיכרון|הרשאות|רשימת\s+(?:ה)?מותר|הגדרות|כללים|הוראות)

@@ -1,0 +1,9 @@
+workspace-mcp
+mcp
+google-api-python-client
+google-auth
+google-auth-oauthlib
+aiohttp
+faster-whisper
+edge-tts
+pytest

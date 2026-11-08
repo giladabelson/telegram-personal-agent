@@ -1,0 +1,27 @@
+# secrets and per-user state
+.env
+.env.*
+!.env.example
+*.env
+*.key
+*.pem
+client_secret*.json
+credentials*.json
+token*.json
+*session*.dat
+.mcp.json
+memory/
+permissions/learned.json
+PERMISSIONS_LOG.md
+tests/e2e/out/
+.claude/settings.local.json
+.claude/*.lock
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.log

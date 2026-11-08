@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task|WebFetch|WebSearch|Read|mcp__google__.*|mcp__jarvis__work_status|mcp__claude-in-chrome__(get_page_text|read_page|find)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.venv/Scripts/python.exe\" -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/injection_scan.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
